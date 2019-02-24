@@ -62,7 +62,6 @@ public class UserTest extends TicketTest {
 
   @Test
   public void testRegisterUser() {
-
     assertTrue(
         "Should have correctly created the user - check your write user method",
         dao.addUser(testUser)); // add string explanation
