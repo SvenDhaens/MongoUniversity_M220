@@ -4,16 +4,19 @@ import java.util.Map;
 
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
-import com.mongodb.MongoWriteConcernException;
 import com.mongodb.MongoWriteException;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
 import mflix.api.models.Session;
 import mflix.api.models.User;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
+import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,11 +62,8 @@ public class UserDao extends AbstractMFlixDao {
         try {
             usersCollection.withWriteConcern(WriteConcern.MAJORITY).insertOne(user);
             return true;
-        } catch (MongoWriteException ex) {
+        } catch (MongoException ex) {
             throw new IncorrectDaoOperation(ex.getMessage());
-        } catch (MongoWriteConcernException ex) {
-            System.out.println("Could not complete write to Majority of nodes.");
-            return false;
         }
         //TODO > Ticket: Handling Errors - make sure to only add new users
         // and not users that already exist.
@@ -81,7 +81,13 @@ public class UserDao extends AbstractMFlixDao {
             Session newUserSession = new Session();
             newUserSession.setUserId(userId);
             newUserSession.setJwt(jwt);
-            this.sessionsCollection.insertOne(newUserSession);
+
+            Bson query = eq("user_id", userId);
+            Bson update = Updates.combine(Updates.set("jwt", jwt),
+                    Updates.setOnInsert("user_id", userId));
+
+            UpdateOptions options = new UpdateOptions().upsert(true);
+            this.sessionsCollection.updateOne(query, update, options);
         } catch (MongoWriteException ex) {
             System.out.println(ex.getMessage());
             return false;
@@ -114,7 +120,7 @@ public class UserDao extends AbstractMFlixDao {
     }
 
     public boolean deleteUserSessions(String userId) {
-        return sessionsCollection.deleteOne(eq("user_id", userId)).wasAcknowledged();
+        return sessionsCollection.deleteMany(eq("user_id", userId)).wasAcknowledged();
     }
 
     /**
@@ -143,8 +149,9 @@ public class UserDao extends AbstractMFlixDao {
         try {
             if (userPreferences == null) {
                 throw new IncorrectDaoOperation("cannot save preferences: null");
+            } else {
+                this.usersCollection.updateOne(eq("email", email), set("preferences", userPreferences));
             }
-            this.usersCollection.updateOne(eq("email", email), set("preferences", userPreferences));
         } catch (MongoException ex) {
             throw new IncorrectDaoOperation(ex.getMessage());
         }
