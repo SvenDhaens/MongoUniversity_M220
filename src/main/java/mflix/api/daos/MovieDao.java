@@ -81,8 +81,6 @@ public class MovieDao extends AbstractMFlixDao {
         if (!validIdValue(movieId)) {
             return null;
         }
-
-
         // match stage to find movie
         Bson match = Aggregates.match(eq("_id", new ObjectId(movieId)));
         // Get Comments - implement the lookup stage that allows the comments to
@@ -91,17 +89,17 @@ public class MovieDao extends AbstractMFlixDao {
 
         // Get Comments - implement the lookup stage that allows the comments to
         // retrieved with Movies.
-        List<Variable> let = new ArrayList<>();
-        Variable variable = new Variable("id", "$_id");
+        List<Variable<ObjectId>> let = new ArrayList<>();
+        Variable variable = new Variable("id","_id");
         let.add(variable);
-        Bson matchLetId = Aggregates.match(eq("movie_id", "$$id"));
+        Bson matchLetId = Aggregates.match(eq("movie_id", "id"));
         Bson sort = Aggregates.sort(Sorts.descending("date"));
 
         List<Bson> lookUpPipeline = new ArrayList<>();
         lookUpPipeline.add(matchLetId);
         lookUpPipeline.add(sort);
 
-        Bson lookup = Aggregates.lookup("comments", let, lookUpPipeline, "movie_comments");
+        Bson lookup = Aggregates.lookup("comments", let, lookUpPipeline, "comments");
 
         List<Bson> aggregatePipeline = new ArrayList<>();
         aggregatePipeline.add(match);
