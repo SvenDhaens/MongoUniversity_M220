@@ -1,5 +1,8 @@
 package mflix.api.daos;
 
+import java.util.Date;
+import java.util.List;
+
 import com.mongodb.client.MongoClient;
 import mflix.config.MongoDBConfiguration;
 import org.bson.Document;
@@ -9,16 +12,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-
-import javax.print.Doc;
-import java.util.Date;
-import java.util.List;
 
 @SpringBootTest(classes = {MongoDBConfiguration.class})
 @EnableConfigurationProperties

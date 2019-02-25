@@ -1,5 +1,9 @@
 package mflix.api.daos;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Aggregates;
@@ -8,21 +12,23 @@ import com.mongodb.client.model.BucketOptions;
 import com.mongodb.client.model.Facet;
 import com.mongodb.client.model.Field;
 import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.Variable;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
-import static com.mongodb.client.model.Filters.*;
-import static com.mongodb.client.model.Projections.*;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.in;
+import static com.mongodb.client.model.Filters.text;
+import static com.mongodb.client.model.Projections.include;
+import static com.mongodb.client.model.Projections.metaTextScore;
 
 @Component
 public class MovieDao extends AbstractMFlixDao {
@@ -30,6 +36,7 @@ public class MovieDao extends AbstractMFlixDao {
     public static String MOVIES_COLLECTION = "movies";
 
     private MongoCollection<Document> moviesCollection;
+    private static Logger log = LoggerFactory.getLogger(MovieDao.class.getName());
 
     @Autowired
     public MovieDao(
@@ -41,7 +48,6 @@ public class MovieDao extends AbstractMFlixDao {
     @SuppressWarnings("unchecked")
     private Bson buildLookupStage() {
         return null;
-
     }
 
     /**
@@ -52,10 +58,16 @@ public class MovieDao extends AbstractMFlixDao {
      * @return true if valid movieId.
      */
     private boolean validIdValue(String movieId) {
+
+        try {
+            return ObjectId.isValid(movieId);
+        } catch (IllegalArgumentException ex) {
+            this.log.error("Not a valid movieId: {}", movieId);
+            return false;
+        }
         //TODO> Ticket: Handling Errors - implement a way to catch a
         //any potential exceptions thrown while validating a movie id.
         //Check out this method's use in the method that follows.
-        return true;
     }
 
     /**
@@ -70,13 +82,32 @@ public class MovieDao extends AbstractMFlixDao {
             return null;
         }
 
-        List<Bson> pipeline = new ArrayList<>();
+
         // match stage to find movie
         Bson match = Aggregates.match(eq("_id", new ObjectId(movieId)));
-        pipeline.add(match);
-        // TODO> Ticket: Get Comments - implement the lookup stage that allows the comments to
+        // Get Comments - implement the lookup stage that allows the comments to
         // retrieved with Movies.
-        Document movie = moviesCollection.aggregate(pipeline).first();
+//        Bson commentsStage = Aggregates.lookup("comments", "_id", "movie_id","comments");
+
+        // Get Comments - implement the lookup stage that allows the comments to
+        // retrieved with Movies.
+        List<Variable> let = new ArrayList<>();
+        Variable variable = new Variable("id", "$_id");
+        let.add(variable);
+        Bson matchLetId = Aggregates.match(eq("movie_id", "$$id"));
+        Bson sort = Aggregates.sort(Sorts.descending("date"));
+
+        List<Bson> lookUpPipeline = new ArrayList<>();
+        lookUpPipeline.add(matchLetId);
+        lookUpPipeline.add(sort);
+
+        Bson lookup = Aggregates.lookup("comments", let, lookUpPipeline, "movie_comments");
+
+        List<Bson> aggregatePipeline = new ArrayList<>();
+        aggregatePipeline.add(match);
+        aggregatePipeline.add(lookup);
+
+        Document movie = moviesCollection.aggregate(aggregatePipeline).first();
 
         return movie;
     }

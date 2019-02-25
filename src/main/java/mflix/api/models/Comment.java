@@ -15,7 +15,8 @@ public class Comment {
   @BsonIgnore
   private String id;
 
-  @BsonId @JsonIgnore private ObjectId oid;
+  @BsonId
+  @JsonIgnore private ObjectId oid;
 
   private String text;
 
