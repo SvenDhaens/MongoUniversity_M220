@@ -92,7 +92,7 @@ public class MovieDao extends AbstractMFlixDao {
         List<Variable<ObjectId>> let = new ArrayList<>();
         Variable variable = new Variable("id","_id");
         let.add(variable);
-        Bson matchLetId = Aggregates.match(eq("movie_id", "id"));
+        Bson matchLetId = Aggregates.match(eq("$movie_id", "$$id"));
         Bson sort = Aggregates.sort(Sorts.descending("date"));
 
         List<Bson> lookUpPipeline = new ArrayList<>();
