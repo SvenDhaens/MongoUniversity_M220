@@ -1,6 +1,7 @@
 package mflix.api.daos;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -14,6 +15,8 @@ import com.mongodb.client.model.Field;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.Variable;
+import org.bson.BsonArray;
+import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -83,16 +86,12 @@ public class MovieDao extends AbstractMFlixDao {
         }
         // match stage to find movie
         Bson match = Aggregates.match(eq("_id", new ObjectId(movieId)));
-        // Get Comments - implement the lookup stage that allows the comments to
-        // retrieved with Movies.
-//        Bson commentsStage = Aggregates.lookup("comments", "_id", "movie_id","comments");
 
-        // Get Comments - implement the lookup stage that allows the comments to
-        // retrieved with Movies.
         List<Variable<ObjectId>> let = new ArrayList<>();
-        Variable variable = new Variable("id","_id");
-        let.add(variable);
-        Bson matchLetId = Aggregates.match(eq("$movie_id", "$$id"));
+        let.add(new Variable("the_movie_id", "$_id"));
+
+        Bson expr = Filters.expr(new Document("$eq", Arrays.asList("$movie_id","$$the_movie_id")));
+        Bson matchLetId = Aggregates.match(expr);
         Bson sort = Aggregates.sort(Sorts.descending("date"));
 
         List<Bson> lookUpPipeline = new ArrayList<>();
@@ -100,7 +99,33 @@ public class MovieDao extends AbstractMFlixDao {
         lookUpPipeline.add(sort);
 
         Bson lookup = Aggregates.lookup("comments", let, lookUpPipeline, "comments");
-
+        //lookup example
+        /*
+        db.orders.aggregate([
+                        {
+                                $lookup:
+                {
+                    from: "warehouses",
+                            let: { order_item: "$item", order_qty: "$ordered" },
+                    pipeline: [
+                    { $match:
+                        { $expr:
+                            {
+                                $and:
+                                [
+                                    { $eq: [ "$stock_item",  "$$order_item" ] },
+                                    { $gte: [ "$instock", "$$order_qty" ] }
+                                ]
+                            }
+                        }
+                    },
+                    { $project: { stock_item: 0, _id: 0 } }
+                   ],
+                    as: "stockdata"
+                }
+            }
+        ])
+        */
         List<Bson> aggregatePipeline = new ArrayList<>();
         aggregatePipeline.add(match);
         aggregatePipeline.add(lookup);
