@@ -7,8 +7,11 @@ import java.util.List;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
 import com.mongodb.MongoWriteException;
+import com.mongodb.ReadConcern;
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
@@ -155,6 +158,16 @@ public class CommentDao extends AbstractMFlixDao {
      */
     public List<Critic> mostActiveCommenters() {
         List<Critic> mostActive = new ArrayList<>();
+
+        List<Bson> pipeline = new ArrayList<>();
+        pipeline.add(Aggregates.sortByCount("$email"));
+        pipeline.add(Aggregates.limit(20));
+
+        AggregateIterable<Document> aggregate = this.db.getCollection("comments").withReadConcern(ReadConcern.MAJORITY).aggregate(pipeline);
+        for (Document doc : aggregate) {
+//            System.out.println(doc);
+            mostActive.add(new Critic(doc.getString("_id"), doc.getInteger("count")));
+        }
         // // TODO> Ticket: User Report - execute a command that returns the
         // // list of 20 users, group by number of comments. Don't forget,
         // // this report is expected to be produced with an high durability
